@@ -41,7 +41,7 @@ Since the project is modular, you need to compile the source files together.
 
 2. **Run (ON WINDOWS)**
    ```bash
-  .\os_sim```
+   .\os_sim```
 
   2. **Run (ON lINUX/MAC)**
    ```bash
