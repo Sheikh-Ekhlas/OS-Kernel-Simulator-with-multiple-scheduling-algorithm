@@ -35,15 +35,12 @@ Since the project is modular, you need to compile the source files together.
    ```bash
    git clone [https://github.com/YourUsername/OS-Kernel-Simulator-CEA.git](https://github.com/YourUsername/OS-Kernel-Simulator-CEA.git)
 2. **Compile:**
-
-gcc main.c modules.c -o os_sim
-
-Run:
-
+```bash
+      gcc main.c modules.c -o os_sim
+3. **Run:**
+```bash
 On Windows:
-
 .\os_sim
 
 On Linux/Mac:
-
 ./os_sim
