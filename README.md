@@ -34,3 +34,16 @@ Since the project is modular, you need to compile the source files together.
 1. **Clone the Repository:**
    ```bash
    git clone [https://github.com/YourUsername/OS-Kernel-Simulator-CEA.git](https://github.com/YourUsername/OS-Kernel-Simulator-CEA.git)
+Compile:
+
+gcc main.c modules.c -o os_sim
+
+Run:
+
+On Windows:
+
+.\os_sim
+
+On Linux/Mac:
+
+./os_sim
