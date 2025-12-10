@@ -1,59 +1,58 @@
 /*
- * PROJECT: OS KERNEL SIMULATION
- * FILE: main.c (Driver)
- * AUTHOR: [Your Name]
- * DESCRIPTION: Main entry point and User Menu
+ * PROJECT: OS KERNEL SIMULATION (FINAL VERSION)
+ * FILE: main.c
  */
 
 #include "os_sim.h"
 
-// ==========================================
-// SECTION 1: MAIN FUNCTION
-// ==========================================
 int main() {
-    printf("--- OS KERNEL SIMULATOR (MODULAR) ---\n");
+    printHeader("OS KERNEL SIMULATOR v3.0 (FINAL)");
     
-    // 1. Initialize Test Data
+    // Default Test Data
     createProcess(1, 0, 8, 2, 200);
     createProcess(2, 1, 4, 3, 200); 
     createProcess(3, 2, 9, 1, 300); 
     createProcess(4, 3, 5, 2, 100);
+    
+    saveState(); 
 
-    saveState(); // Backup data for resetting
-    
     int choice, quantum;
-    
-    // 2. Main Menu Loop
+    int pid, arr, burst, prio, mem;
+
     while(1) {
-        printf("\nSelect Scheduling Algorithm:\n");
-        printf("1. FCFS\n2. SJF\n3. Priority\n4. Round Robin\n5. Exit\nChoice: ");
+        printf("\n" ANSI_COLOR_BLUE "=== MAIN MENU ===" ANSI_COLOR_RESET "\n");
+        printf("1. FCFS Algorithm\n");
+        printf("2. SJF Algorithm\n");
+        printf("3. Priority Algorithm\n");
+        printf("4. Round Robin Algorithm\n");
+        printf("5. Add Custom Process\n");
+        printf("6. Exit\n");
+        printf("Choice: ");
         scanf("%d", &choice);
-        
-        resetProcesses(); // Clean memory and reset states
-        
+
+        resetProcesses(); 
+
         switch(choice) {
-            case 1: 
-                runFCFS(); 
-                printMetrics(); 
-                break;
-            case 2: 
-                runSJF(); 
-                printMetrics(); 
-                break;
-            case 3: 
-                runPriority(); 
-                printMetrics(); 
-                break;
+            case 1: runFCFS(); break;
+            case 2: runSJF(); break;
+            case 3: runPriority(); break;
             case 4: 
                 printf("Enter Time Quantum: ");
                 scanf("%d", &quantum);
                 runRoundRobin(quantum); 
-                printMetrics(); 
                 break;
-            case 5: 
-                exit(0);
-            default: 
-                printf("Invalid Choice! Please Try Again.\n");
+            case 5:
+                printf("\n--- ADD NEW PROCESS ---\n");
+                printf("Enter PID: "); scanf("%d", &pid);
+                printf("Arrival Time: "); scanf("%d", &arr);
+                printf("Burst Time: "); scanf("%d", &burst);
+                printf("Priority: "); scanf("%d", &prio);
+                printf("Memory (MB): "); scanf("%d", &mem);
+                createProcess(pid, arr, burst, prio, mem);
+                saveState(); // Update saved state
+                break;
+            case 6: exit(0);
+            default: printf("Invalid Choice.\n");
         }
     }
     return 0;
