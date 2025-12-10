@@ -1,29 +1,123 @@
 /*
- * PROJECT: OS KERNEL SIMULATION
- * FILE: modules.c (Implementation)
- * DESCRIPTION: Contains Logic for Memory, Process Mgmt, and Scheduling
+ * PROJECT: OS KERNEL SIMULATION (FINAL PRO MAX ULTRA)
+ * FILE: modules.c
+ * DESCRIPTION: Added CPU Time Metric
  */
 
-#include "os_sim.h" // Header include karna zaroori hai
+#include "os_sim.h"
 
-// ==========================================
-// SECTION 1: VARIABLE DEFINITIONS
-// ==========================================
+// Definitions
 Process processTable[MAX_PROCESSES];
 Process tempTable[MAX_PROCESSES];
 int processCount = 0;
 int mainMemory[MEMORY_SIZE]; 
+GanttSegment ganttHistory[100];
+int ganttIndex = 0;
 
 // ==========================================
-// SECTION 2: MEMORY MANAGEMENT MODULE
+// MODULE 1: VISUALIZATION TOOLS
 // ==========================================
 
-// Initialize RAM with 0 (Empty)
+void printHeader(char* title) {
+    printf("\n" ANSI_COLOR_CYAN "============================================\n");
+    printf("   %s\n", title);
+    printf("============================================" ANSI_COLOR_RESET "\n");
+}
+
+void recordGantt(int pid, int start, int end) {
+    if(ganttIndex < 100) {
+        ganttHistory[ganttIndex].pid = pid;
+        ganttHistory[ganttIndex].startTime = start;
+        ganttHistory[ganttIndex].endTime = end;
+        ganttIndex++;
+    }
+}
+
+void printGanttChart() {
+    printf("\n" ANSI_COLOR_YELLOW "--- GANTT CHART (Timeline) ---" ANSI_COLOR_RESET "\n");
+    if(ganttIndex == 0) { printf("No execution history.\n"); return; }
+
+    // Top Line
+    printf(" ");
+    for(int i=0; i<ganttIndex; i++) {
+        printf("-------");
+    }
+    printf("\n|");
+
+    // Process IDs
+    for(int i=0; i<ganttIndex; i++) {
+        printf("  P%d  |", ganttHistory[i].pid);
+    }
+
+    // Bottom Line
+    printf("\n ");
+    for(int i=0; i<ganttIndex; i++) {
+        printf("-------");
+    }
+    printf("\n");
+
+    // Time Stamps
+    printf("%d", ganttHistory[0].startTime);
+    for(int i=0; i<ganttIndex; i++) {
+        if(ganttHistory[i].endTime < 10) printf("      %d", ganttHistory[i].endTime);
+        else printf("     %d", ganttHistory[i].endTime);
+    }
+    printf("\n");
+}
+
+void printFinalStats(int totalTime, int busyTime) {
+    float cpuUtil = 0;
+    if(totalTime > 0) cpuUtil = ((float)busyTime / totalTime) * 100;
+    
+    float avgWait = 0, avgTurn = 0;
+    int executed = 0;
+
+    printf("\n" ANSI_COLOR_GREEN "--- PERFORMANCE METRICS ---" ANSI_COLOR_RESET "\n");
+    printf("| PID | Waiting | Turnaround | State |\n");
+    printf("|-----|---------|------------|-------|\n");
+
+    for(int i=0; i<processCount; i++) {
+        if(processTable[i].state == TERMINATED) {
+            printf("| %3d | %7d | %10d | DONE  |\n", 
+                processTable[i].pid, processTable[i].waitingTime, processTable[i].turnAroundTime);
+            avgWait += processTable[i].waitingTime;
+            avgTurn += processTable[i].turnAroundTime;
+            executed++;
+        }
+    }
+    
+    if(executed > 0) {
+        printf("--------------------------------------\n");
+        printf("Total Simulation Time:   %d sec\n", totalTime);
+        printf("Total CPU Busy Time:     %d sec\n", busyTime);  // <-- NEW LINE ADDED HERE
+        printf("Average Waiting Time:    %.2f sec\n", avgWait/executed);
+        printf("Average Turnaround Time: %.2f sec\n", avgTurn/executed);
+        printf("CPU Utilization:         %.2f%%\n", cpuUtil);
+    }
+}
+
+// ==========================================
+// MODULE 2: MEMORY MANAGEMENT
+// ==========================================
+
 void initializeMemory() {
     for(int i = 0; i < MEMORY_SIZE; i++) mainMemory[i] = 0;
 }
 
-// First-Fit Algorithm: Finds the first continuous block of free memory
+void printVisualMemory() {
+    int used = 0;
+    for(int i=0; i<MEMORY_SIZE; i++) if(mainMemory[i] != 0) used++;
+    float percent = (float)used / MEMORY_SIZE * 100;
+
+    printf("\n[RAM] Usage: %.1f%% [", percent);
+    int bars = (int)(percent / 5); 
+    for(int i=0; i<20; i++) {
+        if(i < bars) printf("#");
+        else printf(".");
+    }
+    printf("] (%d/%d MB)\n", used, MEMORY_SIZE);
+}
+
 bool allocateMemory(Process *p) {
     int freeCount = 0, start = -1;
     for (int i = 0; i < MEMORY_SIZE; i++) {
@@ -34,59 +128,31 @@ bool allocateMemory(Process *p) {
             start = -1;
             freeCount = 0;
         }
-        
-        // If block found
         if (freeCount == p->memoryReq) {
             for (int j = start; j < start + freeCount; j++) mainMemory[j] = p->pid;
             return true;
         }
     }
-    return false; // Not enough memory
+    return false;
 }
 
-// Releases memory occupied by a process
 void deallocateMemory(int pid) {
     for (int i = 0; i < MEMORY_SIZE; i++) {
         if (mainMemory[i] == pid) mainMemory[i] = 0;
     }
 }
 
-void printMemoryMap() {
-    printf("\n--- VISUAL MEMORY MAP (Simulated RAM) ---\n");
-    int currentPid = mainMemory[0];
-    int start = 0;
-
-    for (int i = 1; i < MEMORY_SIZE; i++) {
-        if (mainMemory[i] != currentPid) {
-            // Jab Process ID change ho, pichla block print karo
-            if (currentPid == 0) 
-                printf("[ Addr %4d - %4d ] : [ FREE SPACE ]\n", start, i-1);
-            else 
-                printf("[ Addr %4d - %4d ] : [ PROCESS %d  ]\n", start, i-1, currentPid);
-            
-            currentPid = mainMemory[i];
-            start = i;
-        }
-    }
-    if (currentPid == 0) 
-        printf("[ Addr %4d - %4d ] : [ FREE SPACE ]\n", start, MEMORY_SIZE-1);
-    else 
-        printf("[ Addr %4d - %4d ] : [ PROCESS %d  ]\n", start, MEMORY_SIZE-1, currentPid);
-    printf("---------------------------------------------\n");
-}
-
 // ==========================================
-// SECTION 3: PROCESS HELPER MODULE
+// MODULE 3: PROCESS HELPERS
 // ==========================================
 
-// Saves initial state to support resetting for multiple algorithms
 void saveState() {
     for(int i=0; i<processCount; i++) tempTable[i] = processTable[i];
 }
 
-// Resets processes to 'NEW' state for the next run
 void resetProcesses() {
     initializeMemory();
+    ganttIndex = 0; 
     for(int i=0; i<processCount; i++) {
         processTable[i] = tempTable[i];
         processTable[i].state = NEW;
@@ -96,84 +162,68 @@ void resetProcesses() {
     }
 }
 
-// Creates a new process and adds it to the table
 void createProcess(int pid, int arrival, int burst, int priority, int memory) {
     if (processCount >= MAX_PROCESSES) return;
     Process p = {pid, arrival, burst, priority, memory, NEW, burst, 0, 0, 0};
     processTable[processCount] = p;
     processCount++;
+    printf(ANSI_COLOR_GREEN "[LOG] Process %d Created.\n" ANSI_COLOR_RESET, pid);
 }
 
-// Prints final table and average times
-void printMetrics() {
-    printf("\n-------------------------------------------------\n");
-    printf("| PID | Priority | Waiting | Turnaround | State |\n");
-    printf("-------------------------------------------------\n");
-    float totalWait = 0, totalTurn = 0;
-    int executed = 0;
-    for (int i = 0; i < processCount; i++) {
-        if (processTable[i].state == TERMINATED) {
-            printf("| %3d | %8d | %7d | %10d | DONE  |\n", 
-                processTable[i].pid, processTable[i].priority, 
-                processTable[i].waitingTime, processTable[i].turnAroundTime);
-            totalWait += processTable[i].waitingTime;
-            totalTurn += processTable[i].turnAroundTime;
-            executed++;
-        } else {
-            printf("| %3d | %8d | FAILED  |   FAILED   | NO MEM|\n", processTable[i].pid, processTable[i].priority);
+// ==========================================
+// MODULE 4: SCHEDULING ALGORITHMS
+// ==========================================
+
+void runFCFS() {
+    printHeader("RUNNING FCFS SCHEDULER");
+    for (int i = 0; i < processCount - 1; i++) {
+        for (int j = 0; j < processCount - i - 1; j++) {
+            if (processTable[j].arrivalTime > processTable[j+1].arrivalTime) {
+                Process temp = processTable[j]; processTable[j] = processTable[j+1]; processTable[j+1] = temp;
+            }
         }
     }
-    if(executed > 0)
-        printf("\nAverage Waiting Time: %.2f\nAverage Turnaround Time: %.2f\n", totalWait/executed, totalTurn/executed);
-}
-
-// ==========================================
-// SECTION 4: SCHEDULING ALGORITHMS
-// ==========================================
-
-// Algorithm 1: First Come First Serve (FCFS)
-void runFCFS() {
-    printf("\n[ RUNNING FCFS... ]\n");
 
     int currentTime = 0;
+    int busyTime = 0;
+
     for(int i = 0; i < processCount; i++) {
         Process *p = &processTable[i];
-        
         if (currentTime < p->arrivalTime) currentTime = p->arrivalTime;
-        
+
         if (allocateMemory(p)) {
-            printf("\n--- Memory State at Time %d ---\n", currentTime);
-            printMemoryMap(); 
+            printVisualMemory();
+            printf("Time %d: Process %d Started (Burst %d)\n", currentTime, p->pid, p->burstTime);
             
-            printf("Time %d: Process %d (Burst %d) Started.\n", currentTime, p->pid, p->burstTime);
+            recordGantt(p->pid, currentTime, currentTime + p->burstTime); 
             
             p->waitingTime = currentTime - p->arrivalTime;
             currentTime += p->burstTime;
+            busyTime += p->burstTime;
             p->turnAroundTime = currentTime - p->arrivalTime;
             p->state = TERMINATED;
             deallocateMemory(p->pid);
-            printf("Time %d: Process %d Finished.\n", currentTime, p->pid);
         } else {
-            printf("Time %d: Process %d FAILED MEMORY.\n", currentTime, p->pid);
+            printf(ANSI_COLOR_RED "Time %d: Process %d FAILED (Memory Full)\n" ANSI_COLOR_RESET, currentTime, p->pid);
         }
     }
+    printGanttChart();
+    printFinalStats(currentTime, busyTime);
 }
 
-// Algorithm 2: Shortest Job First (SJF - Non Preemptive)
 void runSJF() {
-    printf("\n[ RUNNING SHORTEST JOB FIRST... ]\n");
-    int currentTime = 0, completed = 0;
+    printHeader("RUNNING SJF SCHEDULER");
+    int currentTime = 0, completed = 0, busyTime = 0;
     
     while(completed < processCount) {
         int idx = -1;
         int minBurst = INT_MAX;
-
-        // Select shortest job that has arrived
+        
         for(int i=0; i<processCount; i++) {
             if(processTable[i].arrivalTime <= currentTime && processTable[i].state == NEW) {
                 if(processTable[i].burstTime < minBurst) {
                      if (allocateMemory(&processTable[i])) {
-                         deallocateMemory(processTable[i].pid); 
+                         deallocateMemory(processTable[i].pid);
                          minBurst = processTable[i].burstTime;
                          idx = i;
                      }
@@ -184,33 +234,35 @@ void runSJF() {
         if(idx != -1) {
             Process *p = &processTable[idx];
             allocateMemory(p);
-            printf("\n--- Memory State for Process %d ---\n", p->pid);
-            printMemoryMap(); 
+            printVisualMemory();
+            
+            recordGantt(p->pid, currentTime, currentTime + p->burstTime);
+            
             p->waitingTime = currentTime - p->arrivalTime;
-            printf("Time %d: Process %d (Burst %d) Started.\n", currentTime, p->pid, p->burstTime);
+            printf("Time %d: Process %d Started (Burst %d)\n", currentTime, p->pid, p->burstTime);
             currentTime += p->burstTime;
+            busyTime += p->burstTime;
             p->turnAroundTime = currentTime - p->arrivalTime;
             p->state = TERMINATED;
             deallocateMemory(p->pid);
             completed++;
         } else {
-             // Handle Idle or Finish
              bool pending = false;
              for(int i=0; i<processCount; i++) if(processTable[i].state == NEW) pending = true;
              if(!pending) break;
              currentTime++;
         }
     }
+    printGanttChart();
+    printFinalStats(currentTime, busyTime);
 }
 
-// Algorithm 3: Priority Scheduling (Higher # = Higher Priority)
 void runPriority() {
-    printf("\n[ RUNNING PRIORITY SCHEDULING... ]\n");
-    int currentTime = 0, completed = 0;
+    printHeader("RUNNING PRIORITY SCHEDULER");
+    int currentTime = 0, completed = 0, busyTime = 0;
     
     while(completed < processCount) {
         int idx = -1, maxPriority = -1;
-        
         for(int i=0; i<processCount; i++) {
             if(processTable[i].arrivalTime <= currentTime && processTable[i].state == NEW) {
                 if(processTable[i].priority > maxPriority) {
@@ -222,15 +274,17 @@ void runPriority() {
                 }
             }
         }
-
         if(idx != -1) {
             Process *p = &processTable[idx];
             allocateMemory(p);
-            printf("\n--- Memory State for Process %d ---\n", p->pid);
-            printMemoryMap(); 
+            printVisualMemory();
+
+            recordGantt(p->pid, currentTime, currentTime + p->burstTime); 
+
             p->waitingTime = currentTime - p->arrivalTime;
-            printf("Time %d: Process %d (Priority %d) Started.\n", currentTime, p->pid, p->priority);
+            printf("Time %d: Process %d Started (Priority %d)\n", currentTime, p->pid, p->priority);
             currentTime += p->burstTime;
+            busyTime += p->burstTime;
             p->turnAroundTime = currentTime - p->arrivalTime;
             p->state = TERMINATED;
             deallocateMemory(p->pid);
@@ -242,14 +296,15 @@ void runPriority() {
              currentTime++;
         }
     }
+    printGanttChart();
+    printFinalStats(currentTime, busyTime);
 }
 
-// Algorithm 4: Round Robin (Preemptive)
 void runRoundRobin(int quantum) {
-    printf("\n[ RUNNING ROUND ROBIN (Quantum: %d)... ]\n", quantum);
-    int currentTime = 0, completed = 0;
+    printHeader("RUNNING ROUND ROBIN SCHEDULER");
+    int currentTime = 0, completed = 0, busyTime = 0;
     
-    // Initial Sort by Arrival
+    // Sort
     for (int i = 0; i < processCount - 1; i++) {
         for (int j = 0; j < processCount - i - 1; j++) {
             if (processTable[j].arrivalTime > processTable[j+1].arrivalTime) {
@@ -258,23 +313,25 @@ void runRoundRobin(int quantum) {
         }
     }
     
-    // Load processes into memory (Simplified for RR)
+    // Load Memory
     for(int i=0; i<processCount; i++) {
         if(allocateMemory(&processTable[i])) processTable[i].state = READY; 
     }
-    printf("\n--- Initial Memory State (All Loaded) ---\n");
-    printMemoryMap();
+    printVisualMemory();
+
     while(completed < processCount) {
         bool workDone = false;
         for(int i=0; i<processCount; i++) {
             Process *p = &processTable[i];
-            
             if(p->state == READY && p->arrivalTime <= currentTime && p->remainingTime > 0) {
                 workDone = true;
                 int executeTime = (p->remainingTime > quantum) ? quantum : p->remainingTime;
                 
-                printf("Time %d: Process %d runs for %d sec.\n", currentTime, p->pid, executeTime);
+                printf("Time %d: Process %d runs for %d sec\n", currentTime, p->pid, executeTime);
+                recordGantt(p->pid, currentTime, currentTime + executeTime); 
+
                 currentTime += executeTime;
+                busyTime += executeTime;
                 p->remainingTime -= executeTime;
                 
                 if(p->remainingTime == 0) {
@@ -284,7 +341,6 @@ void runRoundRobin(int quantum) {
                     p->waitingTime = p->turnAroundTime - p->burstTime;
                     deallocateMemory(p->pid);
                     completed++;
-                    printf("--- Process %d Finished at %d ---\n", p->pid, currentTime);
                 }
             }
         }
@@ -295,4 +351,6 @@ void runRoundRobin(int quantum) {
              currentTime++;
         }
     }
+    printGanttChart();
+    printFinalStats(currentTime, busyTime);
 }
