@@ -1,76 +1,83 @@
 /*
- * PROJECT: OS KERNEL SIMULATION
- * FILE: os_sim.h (Header File)
- * DESCRIPTION: Definitions, Structs, and Function Prototypes
+ * PROJECT: OS KERNEL SIMULATION (FINAL VERSION)
+ * FILE: os_sim.h
+ * DESCRIPTION: Header file with Gantt Chart, Colors, and Metrics support.
  */
 
 #ifndef OS_SIM_H
 #define OS_SIM_H
 
-// ==========================================
-// SECTION 1: LIBRARIES & CONSTANTS
-// ==========================================
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <string.h>
 
+// --- CONSTANTS ---
 #define MAX_PROCESSES 10
 #define MEMORY_SIZE 1024 
 
-// Process States Enum
-typedef enum { 
-    NEW, 
-    READY, 
-    RUNNING, 
-    WAITING, 
-    TERMINATED 
-} ProcessState;
+// --- COLORS FOR VISUALIZATION ---
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
-// ==========================================
-// SECTION 2: PROCESS CONTROL BLOCK (PCB)
-// ==========================================
+// --- ENUMS & STRUCTS ---
+typedef enum { NEW, READY, RUNNING, WAITING, TERMINATED } ProcessState;
+
 typedef struct {
-    int pid;            // Process ID
-    int arrivalTime;    // Time of Arrival
-    int burstTime;      // CPU Time Needed
-    int priority;       // Higher Value = Higher Priority
-    int memoryReq;      // RAM Required (MB)
-    ProcessState state; // Current Status
+    int pid;
+    int arrivalTime;
+    int burstTime;
+    int priority;
+    int memoryReq;
+    ProcessState state;
     
-    // Scheduling Metrics
-    int remainingTime;  // For Round Robin
+    // Metrics
+    int remainingTime;  
     int completionTime;
     int waitingTime;
     int turnAroundTime;
 } Process;
 
-// ==========================================
-// SECTION 3: GLOBAL VARIABLES (EXTERN)
-// ==========================================
-// These are defined in modules.c, but accessible everywhere
+// Struct for Gantt Chart History
+typedef struct {
+    int pid;
+    int startTime;
+    int endTime;
+} GanttSegment;
+
+// --- GLOBAL VARIABLES ---
 extern Process processTable[MAX_PROCESSES];
 extern Process tempTable[MAX_PROCESSES];
 extern int processCount;
 extern int mainMemory[MEMORY_SIZE];
+extern GanttSegment ganttHistory[100]; // Stores execution history
+extern int ganttIndex;
 
-// ==========================================
-// SECTION 4: FUNCTION PROTOTYPES
-// ==========================================
+// --- FUNCTION PROTOTYPES ---
 
-// Memory Management
+// Memory
 void initializeMemory();
 bool allocateMemory(Process *p);
 void deallocateMemory(int pid);
-void printMemoryMap();
+void printVisualMemory(); // New Feature
 
-// Process Helpers
+// Process Mgmt
 void saveState();
 void resetProcesses();
 void createProcess(int pid, int arrival, int burst, int priority, int memory);
-void printMetrics();
 
-// Scheduling Algorithms
+// Visualization & Stats
+void printHeader(char* title);
+void recordGantt(int pid, int start, int end); // New Feature
+void printGanttChart(); // New Feature
+void printFinalStats(int totalTime, int busyTime);
+
+// Schedulers
 void runFCFS();
 void runSJF();
 void runPriority();
