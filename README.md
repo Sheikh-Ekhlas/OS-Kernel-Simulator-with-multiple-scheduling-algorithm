@@ -33,7 +33,7 @@ Since the project is modular, you need to compile the source files together.
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/Shiekh-Ekhlas/OS-Kernel-Simulator-CEA.git```
+   git clone https://github.com/Shiekh-Ekhlas/OS-Kernel-Simulator-CEA.git
 
 2. **Compile:**
    
