@@ -1,58 +1,93 @@
 /*
- * PROJECT: OS KERNEL SIMULATION (FINAL VERSION)
+ * PROJECT: OS KERNEL SIMULATION (STRICT FLOW EDITION)
  * FILE: main.c
  */
 
 #include "os_sim.h"
 
 int main() {
-    printHeader("OS KERNEL SIMULATOR v3.0 (FINAL)");
+    printHeader("OS KERNEL SIMULATOR - COMPLEX ENGINEERING ACTIVITY");
     
-    // Default Test Data
+    // Default Data
     createProcess(1, 0, 8, 2, 200);
     createProcess(2, 1, 4, 3, 200); 
-    createProcess(3, 2, 9, 1, 300); 
-    createProcess(4, 3, 5, 2, 100);
-    
-    saveState(); 
+    saveState();
 
-    int choice, quantum;
-    int pid, arr, burst, prio, mem;
+    int choice, subChoice, pid, arr, burst, prio, mem, quantum;
 
     while(1) {
-        printf("\n" ANSI_COLOR_BLUE "=== MAIN MENU ===" ANSI_COLOR_RESET "\n");
-        printf("1. FCFS Algorithm\n");
-        printf("2. SJF Algorithm\n");
-        printf("3. Priority Algorithm\n");
-        printf("4. Round Robin Algorithm\n");
-        printf("5. Add Custom Process\n");
-        printf("6. Exit\n");
-        printf("Choice: ");
+        // --- PHASE 1: PROCESS MANAGEMENT (Creation/Deletion/Checking) ---
+        printf("\n" BLUE "=== STEP 1: KERNEL PROCESS MANAGER ===" RESET "\n");
+        printf("1. Create New Process\n");
+        printf("2. Delete Process\n");
+        printf("3. Update Process Details\n");
+        printf("4. View/Check Process Queue\n");
+        printf("5. Check RAM Status (Allocation Check)\n");
+        printf("6. " GREEN "PROCEED TO SCHEDULER >>" RESET "\n");
+        printf("7. Exit\n");
+        printf("Select: ");
         scanf("%d", &choice);
 
-        resetProcesses(); 
+        if(choice == 7) exit(0);
 
-        switch(choice) {
-            case 1: runFCFS(); break;
-            case 2: runSJF(); break;
-            case 3: runPriority(); break;
-            case 4: 
-                printf("Enter Time Quantum: ");
-                scanf("%d", &quantum);
-                runRoundRobin(quantum); 
-                break;
-            case 5:
-                printf("\n--- ADD NEW PROCESS ---\n");
-                printf("Enter PID: "); scanf("%d", &pid);
-                printf("Arrival Time: "); scanf("%d", &arr);
-                printf("Burst Time: "); scanf("%d", &burst);
-                printf("Priority: "); scanf("%d", &prio);
-                printf("Memory (MB): "); scanf("%d", &mem);
+        if(choice == 1) {
+            printf("PID: "); scanf("%d", &pid);
+            printf("Arrival (>=0): "); scanf("%d", &arr);
+            printf("Burst (>0): "); scanf("%d", &burst);
+            printf("Priority (1-10): "); scanf("%d", &prio);
+            printf("Memory (1-%d MB): ", MEMORY_SIZE); scanf("%d", &mem);
+    
+          // Validation Check
+            if(arr < 0 || burst <= 0 || mem <= 0 || mem > MEMORY_SIZE) {
+            printf(RED "Error: Invalid Input Values! Process not created.\n" RESET);
+             } else {
                 createProcess(pid, arr, burst, prio, mem);
-                saveState(); // Update saved state
-                break;
-            case 6: exit(0);
-            default: printf("Invalid Choice.\n");
+            saveState();
+    }
+        }
+        else if(choice == 2) {
+            printf("Enter PID to Delete: "); scanf("%d", &pid);
+            deleteProcess(pid);
+            saveState();
+        }
+        else if(choice == 3) {
+            printf("Enter PID to Update: "); scanf("%d", &pid);
+            updateProcess(pid);
+            saveState();
+        }
+        else if(choice == 4) {
+            viewProcessTable();
+        }
+        else if(choice == 5) {
+            printVisualMemory(); // Shows Allocation Status
+        }
+        else if(choice == 6) {
+            // --- PHASE 2: SCHEDULING ALGORITHMS ---
+            while(1) {
+                printf("\n" YELLOW "=== STEP 2: SCHEDULER EXECUTION ===" RESET "\n");
+                printf("1. First Come First Serve (FCFS)\n");
+                printf("2. Shortest Job First (SJF)\n");
+                printf("3. Priority Scheduling\n");
+                printf("4. Round Robin\n");
+                printf("5. << Go Back to Process Manager\n");
+                printf("Select: ");
+                scanf("%d", &subChoice);
+
+                if(subChoice == 5) break; // Go back to Phase 1
+
+                resetProcesses(); // Always reset before run
+
+                if(subChoice == 1) runFCFS();
+                else if(subChoice == 2) runSJF();
+                else if(subChoice == 3) runPriority();
+                else if(subChoice == 4) {
+                    printf("Enter Time Quantum: "); scanf("%d", &quantum);
+                    runRoundRobin(quantum);
+                }
+                printf("\n" YELLOW "Simulation Complete. Press Enter to return to Menu..." RESET);
+                    getchar(); 
+                    getchar();
+            }
         }
     }
     return 0;
