@@ -1,7 +1,6 @@
 /*
- * PROJECT: OS KERNEL SIMULATION (FINAL VERSION)
+ * PROJECT: OS KERNEL SIMULATION (STRICT FLOW EDITION)
  * FILE: os_sim.h
- * DESCRIPTION: Header file with Gantt Chart, Colors, and Metrics support.
  */
 
 #ifndef OS_SIM_H
@@ -10,23 +9,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <limits.h>
 #include <string.h>
 
-// --- CONSTANTS ---
 #define MAX_PROCESSES 10
 #define MEMORY_SIZE 1024 
 
-// --- COLORS FOR VISUALIZATION ---
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
+// ANSI Colors for Professional Output
+#define RED     "\x1b[31m"
+#define GREEN   "\x1b[32m"
+#define YELLOW  "\x1b[33m"
+#define BLUE    "\x1b[34m"
+#define CYAN    "\x1b[36m"
+#define RESET   "\x1b[0m"
 
-// --- ENUMS & STRUCTS ---
-typedef enum { NEW, READY, RUNNING, WAITING, TERMINATED } ProcessState;
+// Process States [cite: 29]
+typedef enum { NEW, READY, RUNNING, TERMINATED } ProcessState;
 
 typedef struct {
     int pid;
@@ -36,45 +33,42 @@ typedef struct {
     int memoryReq;
     ProcessState state;
     
-    // Metrics
     int remainingTime;  
-    int completionTime;
     int waitingTime;
     int turnAroundTime;
 } Process;
 
-// Struct for Gantt Chart History
-typedef struct {
-    int pid;
-    int startTime;
-    int endTime;
-} GanttSegment;
+// Gantt Chart Helper
+typedef struct { int pid; int startTime; int endTime; } GanttSegment;
 
-// --- GLOBAL VARIABLES ---
 extern Process processTable[MAX_PROCESSES];
 extern Process tempTable[MAX_PROCESSES];
 extern int processCount;
 extern int mainMemory[MEMORY_SIZE];
-extern GanttSegment ganttHistory[100]; // Stores execution history
+extern GanttSegment ganttHistory[100];
 extern int ganttIndex;
 
-// --- FUNCTION PROTOTYPES ---
+// --- FUNCTIONS ---
 
-// Memory
+// Memory Management [cite: 50]
 void initializeMemory();
 bool allocateMemory(Process *p);
 void deallocateMemory(int pid);
-void printVisualMemory(); // New Feature
+void printVisualMemory(); 
 
-// Process Mgmt
+// Process Management (CRUD)
+void createProcess(int pid, int arrival, int burst, int priority, int memory);
+void deleteProcess(int pid);      // Missing Feature Added
+void updateProcess(int pid);      // Missing Feature Added
+void viewProcessTable();          // "Checking" Feature Added
 void saveState();
 void resetProcesses();
-void createProcess(int pid, int arrival, int burst, int priority, int memory);
 
-// Visualization & Stats
+// Visualization & Logging
 void printHeader(char* title);
-void recordGantt(int pid, int start, int end); // New Feature
-void printGanttChart(); // New Feature
+void logStateChange(Process *p, ProcessState newState); // 
+void recordGantt(int pid, int start, int end);
+void printGanttChart(); // [cite: 31]
 void printFinalStats(int totalTime, int busyTime);
 
 // Schedulers
